@@ -1,0 +1,35 @@
+name: 'Coverage Ratchet'
+description: 'Flag if pull requests that would reduce code coverage'
+inputs:
+  working-directory:
+    description: 'directory with coverage folder'
+    required: true
+  package-manager:
+    description: 'npm, yarn, or pnpm'
+    required: false
+    default: 'npm'
+  test-script:
+    description: 'script to generate coverage report'
+    required: true
+  github-token:
+    description: 'A github access token'
+    required: true
+    default: ${{ github.token }}
+  default-branch:
+    description: 'Default branch name (typically "main" or "master")'
+    required: false
+    default: ${{ github.event.repository.default_branch }}
+  margin:
+    description: 'Only report failure if decline is larger than this margin'
+    required: false
+    default: 0
+  print-declines:
+    description: 'Optionally list where coverage declined in the PR comment'
+    required: false
+    default: false
+outputs:
+  declines:
+    description: 'declining coverage output'
+runs:
+  using: 'node16'
+  main: 'dist/index.js'

@@ -1,0 +1,21 @@
+name: weekly scan
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+
+jobs:
+  scan:
+    name: audit dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./
+        with:
+          package_manager: yarn
+          audit_level: high
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_title: Security vulnerabilities found (all deps)
+          issue_assignees: c-tuck
+          issue_labels: vulnerability
+          dedupe_issues: true

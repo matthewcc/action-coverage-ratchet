@@ -1,0 +1,15 @@
+name: "jest-coverage-report"
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create test coverage reports
+      uses: artiomtr/jest-coverage-report-action@v2.0.3
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
