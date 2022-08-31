@@ -1,0 +1,16 @@
+[
+  {
+    "name": "total",
+    "statements": 5,
+    "branches": 0,
+    "functions": 0,
+    "lines": 0
+  },
+  {
+    "name": "path/to/file.js",
+    "statements": 5,
+    "branches": 0,
+    "functions": 0,
+    "lines": 0
+  }
+]

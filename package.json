@@ -18,7 +18,7 @@
     "before-commit": "yarn lint-staged && yarn type-check && yarn test --ci",
     "lint": "eslint . --cache --format codeframe --ext .js,.json,.ts",
     "bundle": "ncc build",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "all": "concurrently \"yarn build\" \"yarn test\" \"yarn lint\" && yarn bundle",
     "release": "standard-version --commit-all",
     "release:dry": "standard-version --dry-run",

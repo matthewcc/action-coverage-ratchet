@@ -1,26 +1,11 @@
 import * as core from '@actions/core';
 import { readFile } from 'fs/promises';
 
-interface CoveredCategory {
-    total: number
-    covered: number
-    skipped: number
-    pct: number
-}
+import type { CoverageReport } from './coverage-types';
 
-interface CoveredFile {
-    lines: CoveredCategory
-    statements: CoveredCategory
-    functions: CoveredCategory
-    branches: CoveredCategory
-    branchesTrue?: CoveredCategory
-}
-
-type CoverageReport = Array<CoveredFile>;
-
-export default async function getCoverageReport(): Promise<CoverageReport | undefined> {
+export default async function getCoverageReport(path?: string): Promise<CoverageReport | undefined> {
     const dir = core.getInput('working-directory');
-    const pathToSummary = `${dir}/coverage/coverage-summary.json`;
+    const pathToSummary = path || `${dir}/coverage/coverage-summary.json`;
 
     let coverageRaw;
 

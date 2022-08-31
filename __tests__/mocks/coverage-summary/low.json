@@ -1,0 +1,15 @@
+{
+  "total": {
+    "lines": { "total": 8, "covered": 2, "skipped": 0, "pct": 25 },
+    "statements": { "total": 8, "covered": 2, "skipped": 0, "pct": 25 },
+    "functions": { "total": 8, "covered": 2, "skipped": 0, "pct": 25 },
+    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 },
+    "branchesTrue": { "total": 0, "covered": 0, "skipped": 0, "pct": "Unknown" }
+  },
+  "/Users/mcooley/Documents/repos/tabletop-eliminator/tte/apps/vtm-character-sheet/utils/math.js": {
+    "lines": { "total": 8, "covered": 2, "skipped": 0, "pct": 25 },
+    "functions": { "total": 8, "covered": 2, "skipped": 0, "pct": 25 },
+    "statements": { "total": 8, "covered": 2, "skipped": 0, "pct": 25 },
+    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
+  }
+}

@@ -1,6 +1,130 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 8045:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.switchBack = exports.switchBranch = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const exec_1 = __nccwpck_require__(1514);
+const switchBranch = (branch) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        core.debug(`switching to branch: ${branch}`);
+        yield (0, exec_1.exec)('git fetch --all --depth=1');
+    }
+    catch (err) {
+        console.warn('Error fetching git repository', err);
+    }
+    yield (0, exec_1.exec)(`git checkout -f ${branch}`);
+});
+exports.switchBranch = switchBranch;
+const switchBack = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        core.debug('switching back to feature');
+        yield (0, exec_1.exec)('git checkout -');
+    }
+    catch (err) {
+        console.warn('Error checking to branches', err);
+    }
+});
+exports.switchBack = switchBack;
+
+
+/***/ }),
+
+/***/ 2350:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+function checkForDecline({ coverageDifferences, margin = 0 }) {
+    const total = coverageDifferences.find(({ name }) => name === 'total');
+    if (!total) {
+        // TODO: shouldn't be possible, but throw error
+        return true;
+    }
+    if (total.branches < margin
+        || (total === null || total === void 0 ? void 0 : total.functions) < margin
+        || (total === null || total === void 0 ? void 0 : total.lines) < margin
+        || (total === null || total === void 0 ? void 0 : total.statements) < margin) {
+        return true;
+    }
+    return false;
+}
+exports["default"] = checkForDecline;
+
+
+/***/ }),
+
+/***/ 6379:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+function compareCoverage({ baseCoverageReport, newCoverageReport }) {
+    const coverageDifferences = [];
+    const missingTests = [];
+    Object.entries(baseCoverageReport).forEach(([key, baseReport]) => {
+        const newFileReport = newCoverageReport[key];
+        if (newFileReport) {
+            // this file is covered in both reports
+            const comparison = {
+                name: key,
+                statements: newFileReport.statements.pct - baseReport.statements.pct,
+                branches: newFileReport.branches.pct - baseReport.branches.pct,
+                functions: newFileReport.statements.pct - baseReport.functions.pct,
+                lines: newFileReport.statements.pct - baseReport.lines.pct
+            };
+            coverageDifferences.push(comparison);
+        }
+        else {
+            // this file is not covered in the new report
+            missingTests.push(key);
+        }
+    });
+    return {
+        coverageDifferences,
+        missingTests
+    };
+}
+exports["default"] = compareCoverage;
+
+
+/***/ }),
+
 /***/ 968:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -37,10 +161,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const promises_1 = __nccwpck_require__(3292);
-function getCoverageReport() {
+function getCoverageReport(path) {
     return __awaiter(this, void 0, void 0, function* () {
         const dir = core.getInput('working-directory');
-        const pathToSummary = `${dir}/coverage/coverage-summary.json`;
+        const pathToSummary = path || `${dir}/coverage/coverage-summary.json`;
         let coverageRaw;
         try {
             coverageRaw = yield (0, promises_1.readFile)(pathToSummary);
@@ -122,7 +246,10 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github_1 = __nccwpck_require__(5438);
 const exec_1 = __nccwpck_require__(1514);
+const branch_1 = __nccwpck_require__(8045);
 const getCoverageReport_1 = __importDefault(__nccwpck_require__(968));
+const compareCoverage_1 = __importDefault(__nccwpck_require__(6379));
+const checkForDecline_1 = __importDefault(__nccwpck_require__(2350));
 function run() {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -131,16 +258,35 @@ function run() {
                 core.setFailed('No pull request found.');
                 return;
             }
-            // const mainBranchName = core.getInput('default-branch');
+            const mainBranchName = core.getInput('default-branch');
             const testScript = core.getInput('test-script');
-            // await switchBranch(mainBranchName);
+            const margin = parseInt(core.getInput('margin'), 10);
+            yield (0, branch_1.switchBranch)(mainBranchName);
             yield (0, exec_1.exec)(testScript);
-            const coverageReport = yield (0, getCoverageReport_1.default)();
-            console.log({ coverageReport });
+            const baseCoverageReport = yield (0, getCoverageReport_1.default)();
+            if (!baseCoverageReport) {
+                core.setFailed('Unable to get coverage report from default branch');
+                return;
+            }
+            yield (0, branch_1.switchBack)();
+            yield (0, exec_1.exec)(testScript);
+            const newCoverageReport = yield (0, getCoverageReport_1.default)();
+            if (!newCoverageReport) {
+                core.setFailed('Unable to get coverage report from feature branch');
+                return;
+            }
+            const { coverageDifferences } = (0, compareCoverage_1.default)({
+                baseCoverageReport,
+                newCoverageReport
+            });
+            const coverageHasDeclined = (0, checkForDecline_1.default)({
+                coverageDifferences,
+                margin
+            });
             const githubToken = core.getInput('github-token');
             const pullRequestNumber = github_1.context.payload.pull_request.number;
             const octokit = (0, github_1.getOctokit)(githubToken);
-            yield octokit.rest.issues.createComment(Object.assign(Object.assign({}, github_1.context.repo), { body: 'This is a test comment', issue_number: pullRequestNumber }));
+            yield octokit.rest.issues.createComment(Object.assign(Object.assign({}, github_1.context.repo), { body: coverageHasDeclined ? 'Coverage has declined.' : 'Coverage has increased.', issue_number: pullRequestNumber }));
         }
         catch (err) {
             if (err instanceof Error) {

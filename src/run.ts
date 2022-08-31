@@ -4,6 +4,8 @@ import { exec } from '@actions/exec';
 
 import { switchBranch, switchBack } from './branch';
 import getCoverageReport from './getCoverageReport';
+import compareCoverage from './compareCoverage';
+import checkForDecline from './checkForDecline';
 
 export default async function run(): Promise<void> {
     try {
@@ -12,15 +14,37 @@ export default async function run(): Promise<void> {
             return;
         }
 
-        // const mainBranchName = core.getInput('default-branch');
+        const mainBranchName = core.getInput('default-branch');
         const testScript = core.getInput('test-script');
+        const margin = parseInt(core.getInput('margin'), 10);
 
-        // await switchBranch(mainBranchName);
+        await switchBranch(mainBranchName);
         await exec(testScript);
+        const baseCoverageReport = await getCoverageReport();
 
-        const coverageReport = await getCoverageReport();
+        if (!baseCoverageReport) {
+            core.setFailed('Unable to get coverage report from default branch');
+            return;
+        }
 
-        console.log({ coverageReport });
+        await switchBack();
+        await exec(testScript);
+        const newCoverageReport = await getCoverageReport();
+
+        if (!newCoverageReport) {
+            core.setFailed('Unable to get coverage report from feature branch');
+            return;
+        }
+
+        const { coverageDifferences } = compareCoverage({
+            baseCoverageReport,
+            newCoverageReport
+        });
+
+        const coverageHasDeclined = checkForDecline({
+            coverageDifferences,
+            margin
+        });
 
         const githubToken = core.getInput('github-token');
         const pullRequestNumber = context.payload.pull_request.number;
@@ -28,7 +52,7 @@ export default async function run(): Promise<void> {
 
         await octokit.rest.issues.createComment({
             ...context.repo,
-            body: 'This is a test comment',
+            body: coverageHasDeclined ? 'Coverage has declined.' : 'Coverage has increased.',
             issue_number: pullRequestNumber
         });
     }
