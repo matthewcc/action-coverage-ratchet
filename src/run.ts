@@ -6,6 +6,8 @@ import { switchBranch, switchBack } from './branch';
 import getCoverageReport from './getCoverageReport';
 import compareCoverage from './compareCoverage';
 import checkForDecline from './checkForDecline';
+import fetchPreviousReport from './fetchPreviousReport';
+import generateComment from './generateComment';
 
 export default async function run(): Promise<void> {
     try {
@@ -14,8 +16,17 @@ export default async function run(): Promise<void> {
             return;
         }
 
+        const currentBranch = process.env.GITHUB_HEAD_REF;
+
+        if (!currentBranch) {
+            core.setFailed('Error looking up current branch.');
+            return;
+        }
+
+        const workingDirectory = core.getInput('working-directory');
         const mainBranchName = core.getInput('default-branch');
         const testScript = core.getInput('test-script');
+        const verboseAnnotations = core.getInput('verbose-annotations') === 'true';
         const margin = parseInt(core.getInput('margin'), 10);
 
         await switchBranch(mainBranchName);
@@ -27,7 +38,8 @@ export default async function run(): Promise<void> {
             return;
         }
 
-        await switchBack();
+        // await switchBack();
+        await switchBranch(currentBranch);
         await exec(testScript);
         const newCoverageReport = await getCoverageReport();
 
@@ -50,11 +62,38 @@ export default async function run(): Promise<void> {
         const pullRequestNumber = context.payload.pull_request.number;
         const octokit = getOctokit(githubToken);
 
-        await octokit.rest.issues.createComment({
-            ...context.repo,
-            body: coverageHasDeclined ? 'Coverage has declined.' : 'Coverage has increased.',
-            issue_number: pullRequestNumber
+        const previousReport = await fetchPreviousReport({
+            octokit,
+            repo: context.repo,
+            pr: { number: pullRequestNumber },
+            workingDirectory
         });
+
+        if (coverageHasDeclined) {
+            core.setFailed('Coverage has declined');
+        }
+
+        const body = generateComment({
+            coverageDifferences,
+            coverageHasDeclined,
+            verboseAnnotations,
+            workingDirectory
+        });
+
+        if (previousReport) {
+            await octokit.rest.issues.updateComment({
+                ...context.repo,
+                body,
+                comment_id: previousReport.id
+            });
+        }
+        else {
+            await octokit.rest.issues.createComment({
+                ...context.repo,
+                body,
+                issue_number: pullRequestNumber
+            });
+        }
     }
     catch (err) {
         if (err instanceof Error) {

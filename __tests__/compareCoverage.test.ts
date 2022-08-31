@@ -1,9 +1,8 @@
 import { readFile } from 'fs/promises';
 
 import compareCoverage from '../src/compareCoverage';
-import checkForDecline from '../src/checkForDecline';
 
-import type { CoverageReport } from '../src/coverage-types';
+import type { CoverageReport } from '../src/coverageTypes';
 
 const lowCoverageMock = '__tests__/mocks/coverage-summary/low.json';
 const mediumCoverageMock = '__tests__/mocks/coverage-summary/medium.json';

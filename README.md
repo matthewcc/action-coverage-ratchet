@@ -2,6 +2,8 @@
 
 In a pull request, this action will compare the Jest coverage report in the target branch and the current branch, producing a "failure" status if the code coverage has declined.
 
+Bits and pieces taken from the excellent (jest-coverage-report-action)[https://github.com/ArtiomTr/jest-coverage-report-action].
+
 ## Feature
 
 ### Create a Pull Request comment

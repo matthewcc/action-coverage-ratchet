@@ -23,7 +23,7 @@ inputs:
     description: 'Only report failure if decline is larger than this margin'
     required: false
     default: 0
-  print-declines:
+  verbose-annotations:
     description: 'Optionally list where coverage declined in the PR comment'
     required: false
     default: false

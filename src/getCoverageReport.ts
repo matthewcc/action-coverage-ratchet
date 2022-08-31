@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
 import { readFile } from 'fs/promises';
 
-import type { CoverageReport } from './coverage-types';
+import type { CoverageReport } from './coverageTypes';
 
 export default async function getCoverageReport(path?: string): Promise<CoverageReport | undefined> {
     const dir = core.getInput('working-directory');

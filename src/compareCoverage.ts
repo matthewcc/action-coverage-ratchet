@@ -1,4 +1,4 @@
-import type { CoverageReport } from './coverage-types';
+import type { CoverageReport } from './coverageTypes';
 
 export interface CoverageDifference {
     name: string
