@@ -7,6 +7,8 @@ export default async function getCoverageReport(path?: string): Promise<Coverage
     const dir = core.getInput('working-directory');
     const pathToSummary = path || `${dir}/coverage/coverage-summary.json`;
 
+    core.info(`Loading coverage summary from: ${pathToSummary}`);
+
     let coverageRaw;
 
     try {

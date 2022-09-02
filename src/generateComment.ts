@@ -1,4 +1,6 @@
-import { CoverageDifference } from './compareCoverage';
+import * as core from '@actions/core';
+
+import { CoverageComparison } from './compareCoverage';
 
 export const metaComment = (workingDirectory: string) => (
     `<!-- jest coverage ratchet action for working directory: ${workingDirectory} -->`
@@ -14,36 +16,38 @@ ${body}
 
 </details>
 `;
-interface GenerateCommentProps {
-    coverageHasDeclined: boolean
-    coverageDifferences: CoverageDifference[]
-    verboseAnnotations: boolean
-    workingDirectory: string
-}
 
 export default function generateComment({
-    coverageHasDeclined,
-    coverageDifferences,
-    verboseAnnotations,
-    workingDirectory
-}: GenerateCommentProps): string {
-    if (coverageHasDeclined) {
-        return createMsg([
-            metaComment(workingDirectory),
-            'Total coverage in at least one metric has declined. Please review the changes and update the PR.',
-            createMarkdownSpoiler({
-                summary: 'Show additional coverage details',
-                body: JSON.stringify(coverageDifferences, null, 2)
-            })
-        ]);
+    coverageChange,
+    workingDirectory,
+    margin
+}: {
+    coverageChange: CoverageComparison
+    workingDirectory: string
+    margin: number
+}): string {
+    core.info('Creating comment');
+
+    let headline;
+
+    if (coverageChange.coverageHasDeclined) {
+        // eslint-disable-next-line max-len
+        headline = `**🛑 Total coverage in at least one metric has declined by more than the specified margin of ${margin}%. 🛑**`;
+    }
+    else if (coverageChange.averageCoverageChange > 0) {
+        headline = `**⭐️ Total coverage across metrics have gone up by ${coverageChange.averageCoverageChange}%. ⭐️**`;
+    }
+    else {
+        headline = '**Total coverage across metrics is stable.**';
     }
 
     return createMsg([
         metaComment(workingDirectory),
-        'No code coverage metrics have declined. Good job!',
+        '## Test Coverage Ratchet',
+        headline,
         createMarkdownSpoiler({
             summary: 'Show additional coverage details',
-            body: JSON.stringify(coverageDifferences, null, 2)
+            body: JSON.stringify(coverageChange.testMetrics, null, 2)
         })
     ]);
 }

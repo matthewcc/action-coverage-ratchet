@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 8045:
+/***/ 6379:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -25,99 +25,76 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.switchBack = exports.switchBranch = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const exec_1 = __nccwpck_require__(1514);
-const switchBranch = (branch) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        core.debug(`switching to branch: ${branch}`);
-        yield (0, exec_1.exec)('git fetch --all --depth=1');
-    }
-    catch (err) {
-        console.warn('Error fetching git repository', err);
-    }
-    yield (0, exec_1.exec)(`git checkout -f ${branch}`);
-});
-exports.switchBranch = switchBranch;
-const switchBack = () => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        core.debug('switching back to feature');
-        yield (0, exec_1.exec)('git checkout -');
-    }
-    catch (err) {
-        console.warn('Error checking to branches', err);
-    }
-});
-exports.switchBack = switchBack;
-
-
-/***/ }),
-
-/***/ 2350:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-function checkForDecline({ coverageDifferences, margin = 0 }) {
-    const total = coverageDifferences.find(({ name }) => name === 'total');
-    if (!total) {
-        // TODO: shouldn't be possible, but throw error
-        return true;
-    }
-    if (total.branches < margin
-        || (total === null || total === void 0 ? void 0 : total.functions) < margin
-        || (total === null || total === void 0 ? void 0 : total.lines) < margin
-        || (total === null || total === void 0 ? void 0 : total.statements) < margin) {
+const differenceInMetric = (currentAndIncoming) => (currentAndIncoming.incoming - currentAndIncoming.current);
+/**
+ * @returns boolean on whether any total metrics (statements, branches, functions, lines) have declined
+ */
+function hasCoverageDeclined({ fileMetrics, margin = 0 }) {
+    if (differenceInMetric(fileMetrics.branches) < margin
+        || differenceInMetric(fileMetrics.functions) < margin
+        || differenceInMetric(fileMetrics.lines) < margin
+        || differenceInMetric(fileMetrics.statements) < margin) {
         return true;
     }
     return false;
 }
-exports["default"] = checkForDecline;
-
-
-/***/ }),
-
-/***/ 6379:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-function compareCoverage({ baseCoverageReport, newCoverageReport }) {
-    const coverageDifferences = [];
-    const missingTests = [];
-    Object.entries(baseCoverageReport).forEach(([key, baseReport]) => {
-        const newFileReport = newCoverageReport[key];
-        if (newFileReport) {
+/**
+ * @returns average change across all total metrics (statements, branches, functions, lines)
+ */
+function getAverageCoverageChange(fileMetrics) {
+    const total = fileMetrics.find(({ name }) => name === 'total');
+    if (!total) {
+        // TODO: show error
+        return 0;
+    }
+    const averageCoverageChange = (differenceInMetric(total.branches)
+        + differenceInMetric(total.functions)
+        + differenceInMetric(total.lines)
+        + differenceInMetric(total.statements)) / 4;
+    return averageCoverageChange;
+}
+function compareCoverage({ currentCoverageReport, incomingCoverageReport, margin }) {
+    const fileMetrics = [];
+    core.info('Generating coverage comparison');
+    Object.entries(currentCoverageReport).forEach(([key, currentReport]) => {
+        const incomingReport = incomingCoverageReport[key];
+        if (incomingReport) {
             // this file is covered in both reports
-            const comparison = {
+            const metrics = {
                 name: key,
-                statements: newFileReport.statements.pct - baseReport.statements.pct,
-                branches: newFileReport.branches.pct - baseReport.branches.pct,
-                functions: newFileReport.statements.pct - baseReport.functions.pct,
-                lines: newFileReport.statements.pct - baseReport.lines.pct
+                statements: {
+                    current: currentReport.statements.pct,
+                    incoming: incomingReport.statements.pct
+                },
+                branches: {
+                    current: currentReport.branches.pct,
+                    incoming: incomingReport.branches.pct
+                },
+                functions: {
+                    current: currentReport.functions.pct,
+                    incoming: incomingReport.functions.pct
+                },
+                lines: {
+                    current: currentReport.lines.pct,
+                    incoming: incomingReport.lines.pct
+                }
             };
-            coverageDifferences.push(comparison);
+            fileMetrics.push(metrics);
         }
-        else {
-            // this file is not covered in the new report
-            missingTests.push(key);
-        }
+        // TODO: Track removed tests? Track new tests?
     });
+    const totalFileMetrics = fileMetrics.find(({ name }) => name === 'total');
+    if (!totalFileMetrics) {
+        throw new Error('No total coverage found in current coverage report');
+    }
+    const coverageHasDeclined = hasCoverageDeclined({ fileMetrics: totalFileMetrics, margin });
     return {
-        coverageDifferences,
-        missingTests
+        fileMetrics,
+        coverageHasDeclined,
+        averageCoverageChange: getAverageCoverageChange(fileMetrics)
+        // TODO: identify new and removed tests
     };
 }
 exports["default"] = compareCoverage;
@@ -125,42 +102,33 @@ exports["default"] = compareCoverage;
 
 /***/ }),
 
-/***/ 8545:
+/***/ 6952:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const generateComment_1 = __nccwpck_require__(6952);
-function fetchPreviousReport(props) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const { octokit, repo, pr, workingDirectory } = props;
-        const commentList = yield octokit.paginate('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', Object.assign(Object.assign({}, repo), { issue_number: pr.number }));
-        const previousReport = commentList.find(comment => { var _a; return (_a = comment.body) === null || _a === void 0 ? void 0 : _a.startsWith((0, generateComment_1.metaComment)(workingDirectory)); });
-        return !previousReport ? null : previousReport;
-    });
-}
-exports["default"] = fetchPreviousReport;
-
-
-/***/ }),
-
-/***/ 6952:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createMarkdownSpoiler = exports.metaComment = void 0;
+const core = __importStar(__nccwpck_require__(2186));
 const metaComment = (workingDirectory) => (`<!-- jest coverage ratchet action for working directory: ${workingDirectory} -->`);
 exports.metaComment = metaComment;
 const createMsg = (texts) => texts.join('\n\n');
@@ -173,23 +141,26 @@ ${body}
 </details>
 `;
 exports.createMarkdownSpoiler = createMarkdownSpoiler;
-function generateComment({ coverageHasDeclined, coverageDifferences, verboseAnnotations, workingDirectory }) {
-    if (coverageHasDeclined) {
-        return createMsg([
-            (0, exports.metaComment)(workingDirectory),
-            'Total coverage in at least one metric has declined. Please review the changes and update the PR.',
-            (0, exports.createMarkdownSpoiler)({
-                summary: 'Show additional coverage details',
-                body: JSON.stringify(coverageDifferences, null, 2)
-            })
-        ]);
+function generateComment({ coverageChange, workingDirectory, margin }) {
+    core.info('Creating comment');
+    let headline;
+    if (coverageChange.coverageHasDeclined) {
+        // eslint-disable-next-line max-len
+        headline = `**🛑 Total coverage in at least one metric has declined by more than the specified margin of ${margin}%. 🛑**`;
+    }
+    else if (coverageChange.averageCoverageChange > 0) {
+        headline = `**⭐️ Total coverage across metrics have gone up by ${coverageChange.averageCoverageChange}%. ⭐️**`;
+    }
+    else {
+        headline = '**Total coverage across metrics is stable.**';
     }
     return createMsg([
         (0, exports.metaComment)(workingDirectory),
-        'No code coverage metrics have declined. Good job!',
+        '## Test Coverage Ratchet',
+        headline,
         (0, exports.createMarkdownSpoiler)({
             summary: 'Show additional coverage details',
-            body: JSON.stringify(coverageDifferences, null, 2)
+            body: JSON.stringify(coverageChange.fileMetrics, null, 2)
         })
     ]);
 }
@@ -238,6 +209,7 @@ function getCoverageReport(path) {
     return __awaiter(this, void 0, void 0, function* () {
         const dir = core.getInput('working-directory');
         const pathToSummary = path || `${dir}/coverage/coverage-summary.json`;
+        core.info(`Loading coverage summary from: ${pathToSummary}`);
         let coverageRaw;
         try {
             coverageRaw = yield (0, promises_1.readFile)(pathToSummary);
@@ -259,6 +231,34 @@ function getCoverageReport(path) {
     });
 }
 exports["default"] = getCoverageReport;
+
+
+/***/ }),
+
+/***/ 4011:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const generateComment_1 = __nccwpck_require__(6952);
+function getPreviousComment({ octokit, repo, pullRequestNumber, workingDirectory }) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const commentList = yield octokit.paginate('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', Object.assign(Object.assign({}, repo), { issue_number: pullRequestNumber }));
+        const previousReport = commentList.find(comment => { var _a; return (_a = comment.body) === null || _a === void 0 ? void 0 : _a.startsWith((0, generateComment_1.metaComment)(workingDirectory)); });
+        return !previousReport ? null : previousReport;
+    });
+}
+exports["default"] = getPreviousComment;
 
 
 /***/ }),
@@ -319,11 +319,10 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const github_1 = __nccwpck_require__(5438);
 const exec_1 = __nccwpck_require__(1514);
-const branch_1 = __nccwpck_require__(8045);
+const switchBranch_1 = __importDefault(__nccwpck_require__(6291));
 const getCoverageReport_1 = __importDefault(__nccwpck_require__(968));
+const getPreviousComment_1 = __importDefault(__nccwpck_require__(4011));
 const compareCoverage_1 = __importDefault(__nccwpck_require__(6379));
-const checkForDecline_1 = __importDefault(__nccwpck_require__(2350));
-const fetchPreviousReport_1 = __importDefault(__nccwpck_require__(8545));
 const generateComment_1 = __importDefault(__nccwpck_require__(6952));
 function run() {
     var _a;
@@ -341,53 +340,48 @@ function run() {
             const workingDirectory = core.getInput('working-directory');
             const mainBranchName = core.getInput('default-branch');
             const testScript = core.getInput('test-script');
-            const verboseAnnotations = core.getInput('verbose-annotations') === 'true';
             const margin = parseInt(core.getInput('margin'), 10);
-            yield (0, branch_1.switchBranch)(mainBranchName);
+            yield (0, switchBranch_1.default)(mainBranchName, true);
             yield (0, exec_1.exec)(testScript);
-            const baseCoverageReport = yield (0, getCoverageReport_1.default)();
-            if (!baseCoverageReport) {
+            const currentCoverageReport = yield (0, getCoverageReport_1.default)();
+            if (!currentCoverageReport) {
                 core.setFailed('Unable to get coverage report from default branch');
                 return;
             }
-            // await switchBack();
-            yield (0, branch_1.switchBranch)(currentBranch);
+            yield (0, switchBranch_1.default)(currentBranch);
             yield (0, exec_1.exec)(testScript);
-            const newCoverageReport = yield (0, getCoverageReport_1.default)();
-            if (!newCoverageReport) {
+            const incomingCoverageReport = yield (0, getCoverageReport_1.default)();
+            if (!incomingCoverageReport) {
                 core.setFailed('Unable to get coverage report from feature branch');
                 return;
             }
-            const { coverageDifferences } = (0, compareCoverage_1.default)({
-                baseCoverageReport,
-                newCoverageReport
+            const coverageChange = (0, compareCoverage_1.default)({
+                currentCoverageReport,
+                incomingCoverageReport
             });
-            const coverageHasDeclined = (0, checkForDecline_1.default)({
-                coverageDifferences,
+            const body = (0, generateComment_1.default)({
+                coverageChange,
+                workingDirectory,
                 margin
             });
             const githubToken = core.getInput('github-token');
             const pullRequestNumber = github_1.context.payload.pull_request.number;
             const octokit = (0, github_1.getOctokit)(githubToken);
-            const previousReport = yield (0, fetchPreviousReport_1.default)({
+            const previousReport = yield (0, getPreviousComment_1.default)({
                 octokit,
                 repo: github_1.context.repo,
-                pr: { number: pullRequestNumber },
+                pullRequestNumber,
                 workingDirectory
             });
-            if (coverageHasDeclined) {
+            if (coverageChange.coverageHasDeclined) {
                 core.setFailed('Coverage has declined');
             }
-            const body = (0, generateComment_1.default)({
-                coverageDifferences,
-                coverageHasDeclined,
-                verboseAnnotations,
-                workingDirectory
-            });
             if (previousReport) {
+                core.info('Appending pre-existing comment');
                 yield octokit.rest.issues.updateComment(Object.assign(Object.assign({}, github_1.context.repo), { body, comment_id: previousReport.id }));
             }
             else {
+                core.info('Creating new comment');
                 yield octokit.rest.issues.createComment(Object.assign(Object.assign({}, github_1.context.repo), { body, issue_number: pullRequestNumber }));
             }
         }
@@ -402,6 +396,64 @@ function run() {
     });
 }
 exports["default"] = run;
+
+
+/***/ }),
+
+/***/ 6291:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __importStar(__nccwpck_require__(2186));
+const exec_1 = __nccwpck_require__(1514);
+const switchBranch = (branch, gitFetch = false) => __awaiter(void 0, void 0, void 0, function* () {
+    core.info(`switching to branch: ${branch}`);
+    if (gitFetch) {
+        try {
+            yield (0, exec_1.exec)('git fetch --all --depth=1');
+        }
+        catch (err) {
+            if (err instanceof Error) {
+                core.setFailed(`Unable to fetch branches: ${err.message}`);
+            }
+            else {
+                core.setFailed('Unable to fetch branches');
+            }
+        }
+    }
+    yield (0, exec_1.exec)(`git checkout -f ${branch}`);
+});
+exports["default"] = switchBranch;
 
 
 /***/ }),

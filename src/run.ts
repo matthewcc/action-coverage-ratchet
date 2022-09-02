@@ -2,11 +2,10 @@ import * as core from '@actions/core';
 import { context, getOctokit } from '@actions/github';
 import { exec } from '@actions/exec';
 
-import { switchBranch, switchBack } from './branch';
+import switchBranch from './switchBranch';
 import getCoverageReport from './getCoverageReport';
+import getPreviousComment from './getPreviousComment';
 import compareCoverage from './compareCoverage';
-import checkForDecline from './checkForDecline';
-import fetchPreviousReport from './fetchPreviousReport';
 import generateComment from './generateComment';
 
 export default async function run(): Promise<void> {
@@ -26,35 +25,34 @@ export default async function run(): Promise<void> {
         const workingDirectory = core.getInput('working-directory');
         const mainBranchName = core.getInput('default-branch');
         const testScript = core.getInput('test-script');
-        const verboseAnnotations = core.getInput('verbose-annotations') === 'true';
         const margin = parseInt(core.getInput('margin'), 10);
 
-        await switchBranch(mainBranchName);
+        await switchBranch(mainBranchName, true);
         await exec(testScript);
-        const baseCoverageReport = await getCoverageReport();
+        const currentCoverageReport = await getCoverageReport();
 
-        if (!baseCoverageReport) {
+        if (!currentCoverageReport) {
             core.setFailed('Unable to get coverage report from default branch');
             return;
         }
 
-        // await switchBack();
         await switchBranch(currentBranch);
         await exec(testScript);
-        const newCoverageReport = await getCoverageReport();
+        const incomingCoverageReport = await getCoverageReport();
 
-        if (!newCoverageReport) {
+        if (!incomingCoverageReport) {
             core.setFailed('Unable to get coverage report from feature branch');
             return;
         }
 
-        const { coverageDifferences } = compareCoverage({
-            baseCoverageReport,
-            newCoverageReport
+        const coverageChange = compareCoverage({
+            currentCoverageReport,
+            incomingCoverageReport
         });
 
-        const coverageHasDeclined = checkForDecline({
-            coverageDifferences,
+        const body = generateComment({
+            coverageChange,
+            workingDirectory,
             margin
         });
 
@@ -62,25 +60,20 @@ export default async function run(): Promise<void> {
         const pullRequestNumber = context.payload.pull_request.number;
         const octokit = getOctokit(githubToken);
 
-        const previousReport = await fetchPreviousReport({
+        const previousReport = await getPreviousComment({
             octokit,
             repo: context.repo,
-            pr: { number: pullRequestNumber },
+            pullRequestNumber,
             workingDirectory
         });
 
-        if (coverageHasDeclined) {
+        if (coverageChange.coverageHasDeclined) {
             core.setFailed('Coverage has declined');
         }
 
-        const body = generateComment({
-            coverageDifferences,
-            coverageHasDeclined,
-            verboseAnnotations,
-            workingDirectory
-        });
-
         if (previousReport) {
+            core.info('Appending pre-existing comment');
+
             await octokit.rest.issues.updateComment({
                 ...context.repo,
                 body,
@@ -88,6 +81,8 @@ export default async function run(): Promise<void> {
             });
         }
         else {
+            core.info('Creating new comment');
+
             await octokit.rest.issues.createComment({
                 ...context.repo,
                 body,
