@@ -6,7 +6,7 @@ import switchBranch from './switchBranch';
 import getCoverageReport from './getCoverageReport';
 import getPreviousComment from './getPreviousComment';
 import compareCoverage from './compareCoverage';
-import generateComment from './generateComment';
+import createComment from './createComment';
 
 export default async function run(): Promise<void> {
     try {
@@ -45,13 +45,13 @@ export default async function run(): Promise<void> {
             return;
         }
 
-        const coverageChange = compareCoverage({
+        const coverageComparison = compareCoverage({
             currentCoverageReport,
             incomingCoverageReport
         });
 
-        const body = generateComment({
-            coverageChange,
+        const body = createComment({
+            coverageComparison,
             workingDirectory,
             margin
         });
@@ -67,7 +67,7 @@ export default async function run(): Promise<void> {
             workingDirectory
         });
 
-        if (coverageChange.coverageHasDeclined) {
+        if (coverageComparison.coverageHasDeclined) {
             core.setFailed('Coverage has declined');
         }
 

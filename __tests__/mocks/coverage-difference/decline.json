@@ -1,16 +1,63 @@
-[
-  {
-    "name": "total",
-    "statements": -25,
-    "branches": 0,
-    "functions": -25,
-    "lines": -25
-  },
-  {
-    "name": "path/to/file.js",
-    "statements": -25,
-    "branches": 0,
-    "functions": -25,
-    "lines": -25
-  }
-]
+{
+  "testMetrics": [
+    {
+      "name": "total",
+      "statements": {
+        "current": 50,
+        "incoming": 25
+      },
+      "branches": {
+        "current": 50,
+        "incoming": 25
+      },
+      "functions": {
+        "current": 25,
+        "incoming": 25
+      },
+      "lines": {
+        "current": 50,
+        "incoming": 25
+      }
+    },
+    {
+      "name": "path/to/file.js",
+      "statements": {
+        "current": 50,
+        "incoming": 25
+      },
+      "branches": {
+        "current": 50,
+        "incoming": 25
+      },
+      "functions": {
+        "current": 25,
+        "incoming": 25
+      },
+      "lines": {
+        "current": 50,
+        "incoming": 25
+      }
+    },
+    {
+      "name": "path/to/other/file.js",
+      "statements": {
+        "current": 50,
+        "incoming": 50
+      },
+      "branches": {
+        "current": 50,
+        "incoming": 50
+      },
+      "functions": {
+        "current": 25,
+        "incoming": 25
+      },
+      "lines": {
+        "current": 50,
+        "incoming": 50
+      }
+    }
+  ],
+  "coverageHasDeclined": true,
+  "averageCoverageChange": 25
+}

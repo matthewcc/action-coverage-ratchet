@@ -1,12 +1,9 @@
 import { readFile } from 'fs/promises';
 
-import compareCoverage, { getAverageCoverageChange, hasCoverageDeclined } from '../src/compareCoverage';
+import compareCoverage from '../src/compareCoverage';
 
 import type { CoverageReport } from '../src/coverageTypes';
-import type { TestMetrics } from '../src/compareCoverage';
 
-const differencesWithDeclines = '__tests__/mocks/coverage-difference/decline.json';
-const differencesWithImprovement = '__tests__/mocks/coverage-difference/improve.json';
 const lowCoverageMock = '__tests__/mocks/coverage-summary/low.json';
 const mediumCoverageMock = '__tests__/mocks/coverage-summary/medium.json';
 

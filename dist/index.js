@@ -26,37 +26,41 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getAverageCoverageChange = exports.hasCoverageDeclined = exports.differenceInMetric = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const differenceInMetric = (currentAndIncoming) => (currentAndIncoming.incoming - currentAndIncoming.current);
+exports.differenceInMetric = differenceInMetric;
 /**
  * @returns boolean on whether any total metrics (statements, branches, functions, lines) have declined
  */
-function hasCoverageDeclined({ fileMetrics, margin = 0 }) {
-    if (differenceInMetric(fileMetrics.branches) < margin
-        || differenceInMetric(fileMetrics.functions) < margin
-        || differenceInMetric(fileMetrics.lines) < margin
-        || differenceInMetric(fileMetrics.statements) < margin) {
+function hasCoverageDeclined({ testMetrics, margin = 0 }) {
+    if ((0, exports.differenceInMetric)(testMetrics.branches) < margin
+        || (0, exports.differenceInMetric)(testMetrics.functions) < margin
+        || (0, exports.differenceInMetric)(testMetrics.lines) < margin
+        || (0, exports.differenceInMetric)(testMetrics.statements) < margin) {
         return true;
     }
     return false;
 }
+exports.hasCoverageDeclined = hasCoverageDeclined;
 /**
  * @returns average change across all total metrics (statements, branches, functions, lines)
  */
-function getAverageCoverageChange(fileMetrics) {
-    const total = fileMetrics.find(({ name }) => name === 'total');
+function getAverageCoverageChange(testMetrics) {
+    const total = testMetrics.find(({ name }) => name === 'total');
     if (!total) {
         // TODO: show error
         return 0;
     }
-    const averageCoverageChange = (differenceInMetric(total.branches)
-        + differenceInMetric(total.functions)
-        + differenceInMetric(total.lines)
-        + differenceInMetric(total.statements)) / 4;
+    const averageCoverageChange = ((0, exports.differenceInMetric)(total.branches)
+        + (0, exports.differenceInMetric)(total.functions)
+        + (0, exports.differenceInMetric)(total.lines)
+        + (0, exports.differenceInMetric)(total.statements)) / 4;
     return averageCoverageChange;
 }
+exports.getAverageCoverageChange = getAverageCoverageChange;
 function compareCoverage({ currentCoverageReport, incomingCoverageReport, margin }) {
-    const fileMetrics = [];
+    const testMetrics = [];
     core.info('Generating coverage comparison');
     Object.entries(currentCoverageReport).forEach(([key, currentReport]) => {
         const incomingReport = incomingCoverageReport[key];
@@ -81,19 +85,19 @@ function compareCoverage({ currentCoverageReport, incomingCoverageReport, margin
                     incoming: incomingReport.lines.pct
                 }
             };
-            fileMetrics.push(metrics);
+            testMetrics.push(metrics);
         }
         // TODO: Track removed tests? Track new tests?
     });
-    const totalFileMetrics = fileMetrics.find(({ name }) => name === 'total');
-    if (!totalFileMetrics) {
+    const totalTestMetrics = testMetrics.find(({ name }) => name === 'total');
+    if (!totalTestMetrics) {
         throw new Error('No total coverage found in current coverage report');
     }
-    const coverageHasDeclined = hasCoverageDeclined({ fileMetrics: totalFileMetrics, margin });
+    const coverageHasDeclined = hasCoverageDeclined({ testMetrics: totalTestMetrics, margin });
     return {
-        fileMetrics,
+        testMetrics,
         coverageHasDeclined,
-        averageCoverageChange: getAverageCoverageChange(fileMetrics)
+        averageCoverageChange: getAverageCoverageChange(testMetrics)
         // TODO: identify new and removed tests
     };
 }
@@ -102,7 +106,7 @@ exports["default"] = compareCoverage;
 
 /***/ }),
 
-/***/ 6952:
+/***/ 6206:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -127,11 +131,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createMarkdownSpoiler = exports.metaComment = void 0;
+exports.createMarkdownSpoiler = exports.getMetaComment = void 0;
+/* eslint-disable max-len */
 const core = __importStar(__nccwpck_require__(2186));
-const metaComment = (workingDirectory) => (`<!-- jest coverage ratchet action for working directory: ${workingDirectory} -->`);
-exports.metaComment = metaComment;
-const createMsg = (texts) => texts.join('\n\n');
+const compareCoverage_1 = __nccwpck_require__(6379);
+const getMetaComment = (workingDirectory) => (`<!-- jest coverage ratchet action for working directory: ${workingDirectory} -->`);
+exports.getMetaComment = getMetaComment;
+const composeComment = (texts) => texts.join('\n\n');
 const createMarkdownSpoiler = ({ body, summary }) => `
 <details><summary>${summary}</summary>
 <br/>
@@ -141,30 +147,82 @@ ${body}
 </details>
 `;
 exports.createMarkdownSpoiler = createMarkdownSpoiler;
-function generateComment({ coverageChange, workingDirectory, margin }) {
+const createComparisonLine = (metric) => {
+    if (metric.incoming > metric.current) {
+        return ` ${metric.current} ⬆ ${metric.incoming}`;
+    }
+    if (metric.incoming < metric.current) {
+        return ` ${metric.current} ⬇ ${metric.incoming}`;
+    }
+    return `${metric.current}`;
+};
+const createComparisons = (testMetrics) => {
+    const comparisons = testMetrics.reduce((acc, current) => {
+        if (current.name === 'total') {
+            return acc;
+        }
+        const metrics = [];
+        if ((0, compareCoverage_1.differenceInMetric)(current.statements) < 0) {
+            metrics.push(`- statements: ${createComparisonLine(current.statements)}`);
+        }
+        if ((0, compareCoverage_1.differenceInMetric)(current.branches) < 0) {
+            metrics.push(`- branches: ${createComparisonLine(current.branches)}`);
+        }
+        if ((0, compareCoverage_1.differenceInMetric)(current.functions) < 0) {
+            metrics.push(`- functions: ${createComparisonLine(current.functions)}`);
+        }
+        if ((0, compareCoverage_1.differenceInMetric)(current.lines) < 0) {
+            metrics.push(`- lines: ${createComparisonLine(current.lines)}`);
+        }
+        if (metrics.length > 0) {
+            const name = current.name.split('/').pop() || '';
+            return [
+                ...acc,
+                `${name}:\n${metrics.join('\n')}`
+            ];
+        }
+        return acc;
+    }, []);
+    return comparisons.join('\n\n');
+};
+function createComment({ coverageComparison, workingDirectory, margin }) {
     core.info('Creating comment');
     let headline;
-    if (coverageChange.coverageHasDeclined) {
-        // eslint-disable-next-line max-len
+    if (coverageComparison.coverageHasDeclined) {
         headline = `**🛑 Total coverage in at least one metric has declined by more than the specified margin of ${margin}%. 🛑**`;
     }
-    else if (coverageChange.averageCoverageChange > 0) {
-        headline = `**⭐️ Total coverage across metrics have gone up by ${coverageChange.averageCoverageChange}%. ⭐️**`;
+    else if (coverageComparison.averageCoverageChange > 0) {
+        headline = `⭐️ Total coverage across metrics has gone up by an average of ${coverageComparison.averageCoverageChange}%. ⭐️`;
+    }
+    else if (coverageComparison.averageCoverageChange < 0) {
+        headline = `⚠️ Total coverage has decreased by an average of ${coverageComparison.averageCoverageChange}%, within the specified margin of ${margin}% ⚠️`;
     }
     else {
-        headline = '**Total coverage across metrics is stable.**';
+        headline = 'Total coverage across metrics are stable.';
     }
-    return createMsg([
-        (0, exports.metaComment)(workingDirectory),
+    const totalMetrics = coverageComparison.testMetrics[0];
+    const totalsSummary = [
+        '#### Totals\n\n',
+        `- statements: ${createComparisonLine(totalMetrics.statements)}`,
+        `- branches: ${createComparisonLine(totalMetrics.branches)}`,
+        `- functions: ${createComparisonLine(totalMetrics.functions)}`,
+        `- lines: ${createComparisonLine(totalMetrics.lines)}`
+    ].join('\n');
+    const expandedReport = createComparisons(coverageComparison.testMetrics);
+    return composeComment([
+        (0, exports.getMetaComment)(workingDirectory),
         '## Test Coverage Ratchet',
         headline,
-        (0, exports.createMarkdownSpoiler)({
-            summary: 'Show additional coverage details',
-            body: JSON.stringify(coverageChange.fileMetrics, null, 2)
-        })
+        totalsSummary,
+        expandedReport
+            ? (0, exports.createMarkdownSpoiler)({
+                summary: 'Show additional coverage details',
+                body: expandedReport
+            })
+            : ''
     ]);
 }
-exports["default"] = generateComment;
+exports["default"] = createComment;
 
 
 /***/ }),
@@ -250,11 +308,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const generateComment_1 = __nccwpck_require__(6952);
+const createComment_1 = __nccwpck_require__(6206);
 function getPreviousComment({ octokit, repo, pullRequestNumber, workingDirectory }) {
     return __awaiter(this, void 0, void 0, function* () {
         const commentList = yield octokit.paginate('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', Object.assign(Object.assign({}, repo), { issue_number: pullRequestNumber }));
-        const previousReport = commentList.find(comment => { var _a; return (_a = comment.body) === null || _a === void 0 ? void 0 : _a.startsWith((0, generateComment_1.metaComment)(workingDirectory)); });
+        const previousReport = commentList.find(comment => { var _a; return (_a = comment.body) === null || _a === void 0 ? void 0 : _a.startsWith((0, createComment_1.getMetaComment)(workingDirectory)); });
         return !previousReport ? null : previousReport;
     });
 }
@@ -323,7 +381,7 @@ const switchBranch_1 = __importDefault(__nccwpck_require__(6291));
 const getCoverageReport_1 = __importDefault(__nccwpck_require__(968));
 const getPreviousComment_1 = __importDefault(__nccwpck_require__(4011));
 const compareCoverage_1 = __importDefault(__nccwpck_require__(6379));
-const generateComment_1 = __importDefault(__nccwpck_require__(6952));
+const createComment_1 = __importDefault(__nccwpck_require__(6206));
 function run() {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -355,12 +413,12 @@ function run() {
                 core.setFailed('Unable to get coverage report from feature branch');
                 return;
             }
-            const coverageChange = (0, compareCoverage_1.default)({
+            const coverageComparison = (0, compareCoverage_1.default)({
                 currentCoverageReport,
                 incomingCoverageReport
             });
-            const body = (0, generateComment_1.default)({
-                coverageChange,
+            const body = (0, createComment_1.default)({
+                coverageComparison,
                 workingDirectory,
                 margin
             });
@@ -373,7 +431,7 @@ function run() {
                 pullRequestNumber,
                 workingDirectory
             });
-            if (coverageChange.coverageHasDeclined) {
+            if (coverageComparison.coverageHasDeclined) {
                 core.setFailed('Coverage has declined');
             }
             if (previousReport) {

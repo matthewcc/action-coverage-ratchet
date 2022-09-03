@@ -1,16 +1,44 @@
-[
-  {
-    "name": "total",
-    "statements": 5,
-    "branches": 0,
-    "functions": 0,
-    "lines": 0
-  },
-  {
-    "name": "path/to/file.js",
-    "statements": 5,
-    "branches": 0,
-    "functions": 0,
-    "lines": 0
-  }
-]
+{
+  "testMetrics": [
+    {
+      "name": "total",
+      "statements": {
+        "current": 30,
+        "incoming": 55
+      },
+      "branches": {
+        "current": 30,
+        "incoming": 55
+      },
+      "functions": {
+        "current": 30,
+        "incoming": 55
+      },
+      "lines": {
+        "current": 30,
+        "incoming": 55
+      }
+    },
+    {
+      "name": "path/to/file.js",
+      "statements": {
+        "current": 30,
+        "incoming": 55
+      },
+      "branches": {
+        "current": 30,
+        "incoming": 55
+      },
+      "functions": {
+        "current": 30,
+        "incoming": 55
+      },
+      "lines": {
+        "current": 30,
+        "incoming": 55
+      }
+    }
+  ],
+  "coverageHasDeclined": true,
+  "averageCoverageChange": 55
+}

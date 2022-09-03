@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 
 import type { CoverageReport } from './coverageTypes';
 
-interface CurrentAndIncomimg {
+export interface CurrentAndIncomimg {
     current: number
     incoming: number
 }
@@ -20,7 +20,7 @@ export interface CoverageComparison {
     averageCoverageChange: number
 }
 
-const differenceInMetric = (currentAndIncoming: CurrentAndIncomimg): number => (
+export const differenceInMetric = (currentAndIncoming: CurrentAndIncomimg): number => (
     currentAndIncoming.incoming - currentAndIncoming.current
 );
 

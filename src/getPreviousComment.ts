@@ -1,6 +1,6 @@
 import { getOctokit } from '@actions/github';
 
-import { metaComment } from './generateComment';
+import { getMetaComment } from './createComment';
 
 export default async function getPreviousComment({
     octokit,
@@ -22,7 +22,7 @@ export default async function getPreviousComment({
     );
 
     const previousReport = commentList.find(
-        comment => comment.body?.startsWith(metaComment(workingDirectory))
+        comment => comment.body?.startsWith(getMetaComment(workingDirectory))
     );
 
     return !previousReport ? null : previousReport;
