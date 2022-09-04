@@ -2,59 +2,64 @@ import { readFile } from 'fs/promises';
 
 import compareCoverage from '../src/compareCoverage';
 
-import type { CoverageReport } from '../src/coverageTypes';
+import type { CoverageReport } from '../src/jestCoverageReportTypes';
 
 const lowCoverageMock = '__tests__/mocks/coverage-summary/low.json';
 const mediumCoverageMock = '__tests__/mocks/coverage-summary/medium.json';
+const highWithOneDeclineMock = '__tests__/mocks/coverage-summary/highWithOneDecline.json';
 
 describe('compareCoverage', () => {
-    test('comparison of low report to medium report shows negative change in total', async () => {
-        const lowReport = await readFile(lowCoverageMock);
-        const mediumReport = await readFile(mediumCoverageMock);
+    test('comparison of total coverage change', async () => {
+        const lowReportRaw = await readFile(lowCoverageMock);
+        const mediumReportRaw = await readFile(mediumCoverageMock);
+        const highWithOneDeclineReportRaw = await readFile(highWithOneDeclineMock);
 
-        const coverageComparison = compareCoverage({
-            currentCoverageReport: JSON.parse(mediumReport.toString()) as CoverageReport,
-            incomingCoverageReport: JSON.parse(lowReport.toString()) as CoverageReport
+        const lowReport = JSON.parse(lowReportRaw.toString()) as CoverageReport;
+        const mediumReport = JSON.parse(mediumReportRaw.toString()) as CoverageReport;
+        const highWithOneDeclineReport = JSON.parse(highWithOneDeclineReportRaw.toString()) as CoverageReport;
+
+        const decline = compareCoverage({
+            currentCoverageReport: mediumReport,
+            incomingCoverageReport: lowReport
         });
 
-        expect(coverageComparison.averageCoverageChange).toBeLessThan(0);
-    });
-
-    test('comparison of medium report to low report shows positive change in total coverage', async () => {
-        const lowReport = await readFile(lowCoverageMock);
-        const mediumReport = await readFile(mediumCoverageMock);
-
-        const coverageComparison = compareCoverage({
-            currentCoverageReport: JSON.parse(lowReport.toString()) as CoverageReport,
-            incomingCoverageReport: JSON.parse(mediumReport.toString()) as CoverageReport
+        const improve = compareCoverage({
+            currentCoverageReport: lowReport,
+            incomingCoverageReport: mediumReport
         });
 
-        expect(coverageComparison.averageCoverageChange).toBeGreaterThan(0);
-    });
-});
-
-describe('hasCoverageDeclined', () => {
-    test('decline is true if any numbers in the coverage "total" are negative', async () => {
-        const lowReport = await readFile(lowCoverageMock);
-        const mediumReport = await readFile(mediumCoverageMock);
-
-        const coverageComparison = compareCoverage({
-            currentCoverageReport: JSON.parse(mediumReport.toString()) as CoverageReport,
-            incomingCoverageReport: JSON.parse(lowReport.toString()) as CoverageReport
+        const unchanged = compareCoverage({
+            currentCoverageReport: mediumReport,
+            incomingCoverageReport: mediumReport
         });
 
-        expect(coverageComparison.coverageHasDeclined).toBe(true);
-    });
-
-    test('decline is false if all numbers in the coverage "total" are postive or zero', async () => {
-        const lowReport = await readFile(lowCoverageMock);
-        const mediumReport = await readFile(mediumCoverageMock);
-
-        const coverageComparison = compareCoverage({
-            currentCoverageReport: JSON.parse(lowReport.toString()) as CoverageReport,
-            incomingCoverageReport: JSON.parse(mediumReport.toString()) as CoverageReport
+        const improvedOverallButOneDecline = compareCoverage({
+            currentCoverageReport: mediumReport,
+            incomingCoverageReport: highWithOneDeclineReport
         });
 
-        expect(coverageComparison.coverageHasDeclined).toBe(false);
+        const reportMissingTotal = JSON.parse(JSON.stringify(mediumReport)) as CoverageReport;
+
+        delete reportMissingTotal.total;
+
+        expect(decline.averageCoverageChange).toBeLessThan(0);
+        expect(decline.coverageHasDeclined).toBe(true);
+
+        expect(improve.averageCoverageChange).toBeGreaterThan(0);
+        expect(improve.coverageHasDeclined).toBe(false);
+
+        expect(unchanged.averageCoverageChange).toBe(0);
+        expect(unchanged.coverageHasDeclined).toBe(false);
+
+        //  one of the metrics has declined and should be considered a decline even if the overall coverage has improved
+        expect(improvedOverallButOneDecline.averageCoverageChange).toBeGreaterThan(0);
+        expect(improvedOverallButOneDecline.coverageHasDeclined).toBe(true);
+
+        expect(() => {
+            compareCoverage({
+                currentCoverageReport: reportMissingTotal,
+                incomingCoverageReport: mediumReport
+            });
+        }).toThrow();
     });
 });

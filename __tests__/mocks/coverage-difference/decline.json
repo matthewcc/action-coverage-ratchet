@@ -11,7 +11,7 @@
         "incoming": 25
       },
       "functions": {
-        "current": 25,
+        "current": 50,
         "incoming": 25
       },
       "lines": {
@@ -30,7 +30,7 @@
         "incoming": 25
       },
       "functions": {
-        "current": 25,
+        "current": 50,
         "incoming": 25
       },
       "lines": {
@@ -42,22 +42,22 @@
       "name": "path/to/other/file.js",
       "statements": {
         "current": 50,
-        "incoming": 50
+        "incoming": 25
       },
       "branches": {
         "current": 50,
-        "incoming": 50
+        "incoming": 25
       },
       "functions": {
-        "current": 25,
+        "current": 50,
         "incoming": 25
       },
       "lines": {
         "current": 50,
-        "incoming": 50
+        "incoming": 25
       }
     }
   ],
   "coverageHasDeclined": true,
-  "averageCoverageChange": 25
+  "averageCoverageChange": -25
 }

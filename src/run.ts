@@ -26,10 +26,11 @@ export default async function run(): Promise<void> {
         const mainBranchName = core.getInput('default-branch');
         const testScript = core.getInput('test-script');
         const margin = parseInt(core.getInput('margin'), 10);
+        const pathToSummary = `${workingDirectory}/coverage/coverage-summary.json`;
 
         await switchBranch(mainBranchName, true);
         await exec(testScript);
-        const currentCoverageReport = await getCoverageReport();
+        const currentCoverageReport = await getCoverageReport(pathToSummary);
 
         if (!currentCoverageReport) {
             core.setFailed('Unable to get coverage report from default branch');
@@ -38,7 +39,7 @@ export default async function run(): Promise<void> {
 
         await switchBranch(currentBranch);
         await exec(testScript);
-        const incomingCoverageReport = await getCoverageReport();
+        const incomingCoverageReport = await getCoverageReport(pathToSummary);
 
         if (!incomingCoverageReport) {
             core.setFailed('Unable to get coverage report from feature branch');

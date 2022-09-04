@@ -3,42 +3,42 @@
     {
       "name": "total",
       "statements": {
-        "current": 30,
+        "current": 55,
         "incoming": 55
       },
       "branches": {
-        "current": 30,
+        "current": 55,
         "incoming": 55
       },
       "functions": {
-        "current": 30,
+        "current": 55,
         "incoming": 55
       },
       "lines": {
-        "current": 30,
+        "current": 55,
         "incoming": 55
       }
     },
     {
       "name": "path/to/file.js",
       "statements": {
-        "current": 30,
+        "current": 55,
         "incoming": 55
       },
       "branches": {
-        "current": 30,
+        "current": 55,
         "incoming": 55
       },
       "functions": {
-        "current": 30,
+        "current": 55,
         "incoming": 55
       },
       "lines": {
-        "current": 30,
+        "current": 55,
         "incoming": 55
       }
     }
   ],
   "coverageHasDeclined": false,
-  "averageCoverageChange": 55
+  "averageCoverageChange": 0
 }

@@ -1,34 +1,19 @@
-import * as core from '@actions/core';
 import { readFile } from 'fs/promises';
 
-import type { CoverageReport } from './coverageTypes';
+import type { CoverageReport } from './jestCoverageReportTypes';
 
-export default async function getCoverageReport(path?: string): Promise<CoverageReport | undefined> {
-    const dir = core.getInput('working-directory');
-    const pathToSummary = path || `${dir}/coverage/coverage-summary.json`;
-
-    core.info(`Loading coverage summary from: ${pathToSummary}`);
-
+export default async function getCoverageReport(pathToSummary: string): Promise<CoverageReport | undefined> {
     let coverageRaw;
 
     try {
         coverageRaw = await readFile(pathToSummary);
     }
-    catch (err) {
-        if (err instanceof Error) {
-            core.setFailed(`Error reading coverage report: ${err.message}`);
-        }
-        else {
-            core.setFailed('Unknown error reading coverage report');
-        }
-    }
-
-    if (!coverageRaw) {
-        core.setFailed('Unable to read coverage report');
-        return undefined;
+    catch {
+        throw new Error(`Unable to read coverage report: ${pathToSummary}`);
     }
 
     const stringified = coverageRaw.toString();
+    const report = JSON.parse(stringified) as CoverageReport;
 
-    return JSON.parse(stringified) as CoverageReport;
+    return report;
 }

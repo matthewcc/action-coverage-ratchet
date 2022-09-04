@@ -1,9 +1,11 @@
 /* eslint-disable max-len */
-import * as core from '@actions/core';
+import differenceInMetric from './differenceInMetric';
 
-import { differenceInMetric } from './compareCoverage';
+import type { MetricDiff, CoverageComparison, TestMetrics } from './compareCoverage';
 
-import type { CurrentAndIncomimg, CoverageComparison, TestMetrics } from './compareCoverage';
+const title = '## Test Coverage Ratchet';
+const detailsSummary = 'Show additional coverage details';
+const GITHUB_MESSAGE_SIZE_LIMIT = 65535;
 
 export const getMetaComment = (workingDirectory: string) => (
     `<!-- jest coverage ratchet action for working directory: ${workingDirectory} -->`
@@ -11,16 +13,22 @@ export const getMetaComment = (workingDirectory: string) => (
 
 const composeComment = (texts: string[]) => texts.join('\n\n');
 
-export const createMarkdownSpoiler = ({ body, summary }: { body: string, summary: string }): string => `
-<details><summary>${summary}</summary>
-<br/>
+export function createMarkdownSpoiler({ body, summary }: { body: string, summary: string }): string {
+    if (body.length) {
+        return `
+        <details><summary>${summary}</summary>
+        <br/>
 
-${body}
+        ${body}
 
-</details>
-`;
+        </details>
+        `;
+    }
 
-const createComparisonLine = (metric: CurrentAndIncomimg): string => {
+    return '';
+}
+
+function createComparisonLine(metric: MetricDiff): string {
     if (metric.incoming > metric.current) {
         return ` ${metric.current} ⬆ ${metric.incoming}`;
     }
@@ -30,9 +38,9 @@ const createComparisonLine = (metric: CurrentAndIncomimg): string => {
     }
 
     return `${metric.current}`;
-};
+}
 
-const createComparisons = (testMetrics: TestMetrics[]) => {
+function createComparisons(testMetrics: TestMetrics[]) {
     const comparisons = testMetrics.reduce((acc: string[], current) => {
         if (current.name === 'total') {
             return acc;
@@ -57,7 +65,7 @@ const createComparisons = (testMetrics: TestMetrics[]) => {
         }
 
         if (metrics.length > 0) {
-            const name = current.name.split('/').pop() || '';
+            const name = current.name.split('/').pop() as string;
 
             return [
                 ...acc,
@@ -69,35 +77,37 @@ const createComparisons = (testMetrics: TestMetrics[]) => {
     }, []);
 
     return comparisons.join('\n\n');
-};
+}
 
 export default function createComment({
     coverageComparison,
     workingDirectory,
-    margin
+    margin = 0,
+    commentSizeLimit = GITHUB_MESSAGE_SIZE_LIMIT
 }: {
     coverageComparison: CoverageComparison
     workingDirectory: string
-    margin: number
+    margin?: number
+    commentSizeLimit?: number
 }): string {
-    core.info('Creating comment');
+    let statusHeadline;
 
-    let headline;
+    const { averageCoverageChange, coverageHasDeclined, testMetrics } = coverageComparison;
 
-    if (coverageComparison.coverageHasDeclined) {
-        headline = `**🛑 Total coverage in at least one metric has declined by more than the specified margin of ${margin}%. 🛑**`;
+    if (coverageHasDeclined) {
+        statusHeadline = `**🛑 Total coverage in at least one metric has declined by more than the specified margin of ${margin}%. 🛑**`;
     }
-    else if (coverageComparison.averageCoverageChange > 0) {
-        headline = `⭐️ Total coverage across metrics has gone up by an average of ${coverageComparison.averageCoverageChange}%. ⭐️`;
+    else if (averageCoverageChange > 0) {
+        statusHeadline = `⭐️ Total coverage across metrics has gone up by an average of ${averageCoverageChange}%. ⭐️`;
     }
-    else if (coverageComparison.averageCoverageChange < 0) {
-        headline = `⚠️ Total coverage has decreased by an average of ${coverageComparison.averageCoverageChange}%, within the specified margin of ${margin}% ⚠️`;
+    else if (averageCoverageChange < 0) {
+        statusHeadline = `⚠️ Total coverage has decreased by an average of ${averageCoverageChange}%, within the specified margin of ${margin}% ⚠️`;
     }
     else {
-        headline = 'Total coverage across metrics are stable.';
+        statusHeadline = 'Total coverage across metrics are stable.';
     }
 
-    const totalMetrics = coverageComparison.testMetrics[0];
+    const totalMetrics = testMetrics[0];
     const totalsSummary = [
         '#### Totals\n\n',
         `- statements: ${createComparisonLine(totalMetrics.statements)}`,
@@ -106,18 +116,30 @@ export default function createComment({
         `- lines: ${createComparisonLine(totalMetrics.lines)}`
     ].join('\n');
 
-    const expandedReport = createComparisons(coverageComparison.testMetrics);
+    const metaTag = getMetaComment(workingDirectory);
+    const expandedReport = createComparisons(testMetrics);
+
+    const aboveTheFold = composeComment([
+        metaTag,
+        title,
+        statusHeadline,
+        totalsSummary
+    ]);
+
+    const belowTheFold = createMarkdownSpoiler({
+        summary: detailsSummary,
+        body: expandedReport
+    });
+
+    if (aboveTheFold.length + belowTheFold.length > commentSizeLimit) {
+        return composeComment([
+            aboveTheFold,
+            '⚠️ Coverage details are too large to display in this comment. ⚠️'
+        ]);
+    }
 
     return composeComment([
-        getMetaComment(workingDirectory),
-        '## Test Coverage Ratchet',
-        headline,
-        totalsSummary,
-        expandedReport
-            ? createMarkdownSpoiler({
-                summary: 'Show additional coverage details',
-                body: expandedReport
-            })
-            : ''
+        aboveTheFold,
+        belowTheFold
     ]);
 }

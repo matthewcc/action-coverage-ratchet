@@ -25,5 +25,5 @@ export default async function getPreviousComment({
         comment => comment.body?.startsWith(getMetaComment(workingDirectory))
     );
 
-    return !previousReport ? null : previousReport;
+    return !previousReport ? undefined : previousReport;
 }

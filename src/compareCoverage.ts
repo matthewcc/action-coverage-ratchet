@@ -1,17 +1,18 @@
-import * as core from '@actions/core';
+import getAverageCoverageChange from './getAverageCoverageChange';
+import hasCoverageDeclined from './hasCoverageDeclined';
 
-import type { CoverageReport } from './coverageTypes';
+import type { CoverageReport } from './jestCoverageReportTypes';
 
-export interface CurrentAndIncomimg {
+export interface MetricDiff {
     current: number
     incoming: number
 }
 export interface TestMetrics {
     name: string
-    statements: CurrentAndIncomimg
-    branches: CurrentAndIncomimg
-    functions: CurrentAndIncomimg
-    lines: CurrentAndIncomimg
+    statements: MetricDiff
+    branches: MetricDiff
+    functions: MetricDiff
+    lines: MetricDiff
 }
 
 export interface CoverageComparison {
@@ -20,55 +21,10 @@ export interface CoverageComparison {
     averageCoverageChange: number
 }
 
-export const differenceInMetric = (currentAndIncoming: CurrentAndIncomimg): number => (
-    currentAndIncoming.incoming - currentAndIncoming.current
-);
-
-/**
- * @returns boolean on whether any total metrics (statements, branches, functions, lines) have declined
- */
-export function hasCoverageDeclined({
-    testMetrics,
-    margin = 0
-}: {
-    testMetrics: TestMetrics,
-    margin?: number
-}): boolean {
-    if (
-        differenceInMetric(testMetrics.branches) < margin
-        || differenceInMetric(testMetrics.functions) < margin
-        || differenceInMetric(testMetrics.lines) < margin
-        || differenceInMetric(testMetrics.statements) < margin
-    ) {
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * @returns average change across all total metrics (statements, branches, functions, lines)
- */
-export function getAverageCoverageChange(testMetrics: TestMetrics[]): number {
-    const total = testMetrics.find(({ name }) => name === 'total');
-
-    if (!total) {
-        // TODO: show error
-        return 0;
-    }
-
-    const averageCoverageChange = (differenceInMetric(total.branches)
-        + differenceInMetric(total.functions)
-        + differenceInMetric(total.lines)
-        + differenceInMetric(total.statements)) / 4;
-
-    return averageCoverageChange;
-}
-
 export default function compareCoverage({
     currentCoverageReport,
     incomingCoverageReport,
-    margin
+    margin = 0
 }: {
     currentCoverageReport: CoverageReport
     incomingCoverageReport: CoverageReport
@@ -76,12 +32,9 @@ export default function compareCoverage({
 }): CoverageComparison {
     const testMetrics: TestMetrics[] = [];
 
-    core.info('Generating coverage comparison');
-
     Object.entries(currentCoverageReport).forEach(([key, currentReport]) => {
         const incomingReport = incomingCoverageReport[key];
         if (incomingReport) {
-            // this file is covered in both reports
             const metrics: TestMetrics = {
                 name: key,
                 statements: {
@@ -104,13 +57,12 @@ export default function compareCoverage({
 
             testMetrics.push(metrics);
         }
-        // TODO: Track removed tests? Track new tests?
     });
 
     const totalTestMetrics = testMetrics.find(({ name }) => name === 'total');
 
     if (!totalTestMetrics) {
-        throw new Error('No total coverage found in current coverage report');
+        throw new Error('No "total" object found in coverage report');
     }
 
     const coverageHasDeclined = hasCoverageDeclined({ testMetrics: totalTestMetrics, margin });
@@ -119,6 +71,6 @@ export default function compareCoverage({
         testMetrics,
         coverageHasDeclined,
         averageCoverageChange: getAverageCoverageChange(testMetrics)
-        // TODO: identify new and removed tests
+        // TODO: identify new and removed tests ?
     };
 }

@@ -1,11 +1,11 @@
-export interface CoveredCategory {
+interface CoveredCategory {
     total: number
     covered: number
     skipped: number
     pct: number
 }
 
-export interface Covered {
+interface Covered {
     lines: CoveredCategory
     statements: CoveredCategory
     functions: CoveredCategory
