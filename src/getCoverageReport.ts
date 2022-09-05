@@ -2,7 +2,7 @@ import { readFile } from 'fs/promises';
 
 import type { CoverageReport } from './jestCoverageReportTypes';
 
-export default async function getCoverageReport(pathToSummary: string): Promise<CoverageReport | undefined> {
+export default async function getCoverageReport(pathToSummary: string): Promise<CoverageReport> {
     let coverageRaw;
 
     try {

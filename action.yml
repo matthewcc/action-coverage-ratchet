@@ -1,21 +1,21 @@
 name: 'Coverage Ratchet'
 description: 'Flag if pull requests that would reduce code coverage'
 inputs:
-  working-directory:
+  working_directory:
     description: 'directory with coverage folder'
     required: true
-  package-manager:
-    description: 'npm, yarn, or pnpm'
+  coverage_summary_path:
+    description: 'path inside working_directory to coverage summary json'
+    default: 'coverage/coverage-summary.json'
     required: false
-    default: 'npm'
-  test-script:
-    description: 'script to generate coverage report'
+  test_script:
+    description: 'script to generate coverage report (ex: npm run test)'
     required: true
-  github-token:
+  github_token:
     description: 'A github access token'
     required: true
     default: ${{ github.token }}
-  default-branch:
+  default_branch:
     description: 'Default branch name (typically "main" or "master")'
     required: false
     default: ${{ github.event.repository.default_branch }}

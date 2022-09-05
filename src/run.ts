@@ -10,39 +10,78 @@ import createComment from './createComment';
 
 export default async function run(): Promise<void> {
     try {
-        if (!context.payload.pull_request?.number) {
+        if (context.eventName !== 'pull_request') {
+            core.setFailed('This action only works with pull requests.');
+            return;
+        }
+
+        if (!context.payload?.pull_request?.number) {
             core.setFailed('No pull request found.');
             return;
         }
 
         const currentBranch = process.env.GITHUB_HEAD_REF;
 
-        if (!currentBranch) {
-            core.setFailed('Error looking up current branch.');
+        if (!currentBranch || currentBranch === 'undefined') {
+            core.setFailed('Error looking up current pull request branch.');
             return;
         }
 
-        const workingDirectory = core.getInput('working-directory');
-        const mainBranchName = core.getInput('default-branch');
-        const testScript = core.getInput('test-script');
+        const testScript = core.getInput('test_script');
+
+        if (!testScript || testScript === 'undefined') {
+            core.setFailed('No test_script provided.');
+            return;
+        }
+
+        const githubToken = core.getInput('github_token');
+
+        if (!githubToken || githubToken === 'undefined') {
+            core.setFailed('No github_token provided.');
+            return;
+        }
+
+        const workingDirectory = core.getInput('working_directory');
+        const coverageSummaryPath = core.getInput('coverage_summary_path');
+        const pathToSummary = `${workingDirectory}/${coverageSummaryPath}`;
+
         const margin = parseInt(core.getInput('margin'), 10);
-        const pathToSummary = `${workingDirectory}/coverage/coverage-summary.json`;
+
+        if (Number.isNaN(margin)) {
+            core.setFailed(`Margin must be a number. Received "${core.getInput('margin')}".`);
+            return;
+        }
+
+        if (margin < 0 || margin > 100) {
+            core.setFailed(`Margin must be between 0 and 100. Received ${margin}.`);
+            return;
+        }
+
+        const mainBranchName = core.getInput('default_branch');
 
         await switchBranch(mainBranchName, true);
         await exec(testScript);
-        const currentCoverageReport = await getCoverageReport(pathToSummary);
 
-        if (!currentCoverageReport) {
-            core.setFailed('Unable to get coverage report from default branch');
+        let currentCoverageReport;
+
+        try {
+            currentCoverageReport = await getCoverageReport(pathToSummary);
+        }
+        catch {
+            core.setFailed(`Unable read file: ${pathToSummary}`);
             return;
         }
 
         await switchBranch(currentBranch);
         await exec(testScript);
-        const incomingCoverageReport = await getCoverageReport(pathToSummary);
 
-        if (!incomingCoverageReport) {
-            core.setFailed('Unable to get coverage report from feature branch');
+        let incomingCoverageReport;
+
+        try {
+            incomingCoverageReport = await getCoverageReport(pathToSummary);
+        }
+        catch {
+            core.setFailed(`Unable read file: ${pathToSummary}`);
             return;
         }
 
@@ -57,8 +96,8 @@ export default async function run(): Promise<void> {
             margin
         });
 
-        const githubToken = core.getInput('github-token');
         const pullRequestNumber = context.payload.pull_request.number;
+
         const octokit = getOctokit(githubToken);
 
         const previousReport = await getPreviousComment({
@@ -70,6 +109,12 @@ export default async function run(): Promise<void> {
 
         if (coverageComparison.coverageHasDeclined) {
             core.setFailed('Coverage has declined');
+        }
+        else if (coverageComparison.averageCoverageChange > 0) {
+            core.info('Coverage has increased');
+        }
+        else {
+            core.info('Coverage has not changed');
         }
 
         if (previousReport) {
@@ -93,10 +138,9 @@ export default async function run(): Promise<void> {
     }
     catch (err) {
         if (err instanceof Error) {
-            core.setFailed(err.message);
+            core.info(err.message);
         }
-        else {
-            core.setFailed('Coverage Ratchet action failed');
-        }
+
+        core.setFailed('Coverage Ratchet action failed');
     }
 }

@@ -1,20 +1,17 @@
-import * as core from '@actions/core';
 import { exec } from '@actions/exec';
 
 const switchBranch = async (branch: string, gitFetch = false) => {
-    core.info(`switching to branch: ${branch}`);
-
     if (gitFetch) {
         try {
             await exec('git fetch --all --depth=1');
         }
         catch (err) {
+            let msg = 'Unable to fetch branches';
             if (err instanceof Error) {
-                core.setFailed(`Unable to fetch branches: ${err.message}`);
+                msg = `${msg}: ${err.message}`;
             }
-            else {
-                core.setFailed('Unable to fetch branches');
-            }
+
+            throw new Error(msg);
         }
     }
 

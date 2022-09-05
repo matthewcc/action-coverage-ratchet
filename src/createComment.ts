@@ -7,6 +7,13 @@ const title = '## Test Coverage Ratchet';
 const detailsSummary = 'Show additional coverage details';
 const GITHUB_MESSAGE_SIZE_LIMIT = 65535;
 
+const getTitle = (workingDirectory: string) => {
+    if (['/', './'].includes(workingDirectory)) {
+        return title;
+    }
+
+    return `${title}: ${workingDirectory}`;
+};
 export const getMetaComment = (workingDirectory: string) => (
     `<!-- jest coverage ratchet action for working directory: ${workingDirectory} -->`
 );
@@ -121,7 +128,7 @@ export default function createComment({
 
     const aboveTheFold = composeComment([
         metaTag,
-        title,
+        getTitle(workingDirectory),
         statusHeadline,
         totalsSummary
     ]);

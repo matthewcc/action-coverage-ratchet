@@ -60,4 +60,23 @@ describe('createComment', () => {
 
         expect(comment).toContain('Total coverage across metrics are stable');
     });
+
+    test('Comment has correct title', async () => {
+        const unchangedReport = await readFile(unchangedDiff);
+        const coverageComparison = JSON.parse(unchangedReport.toString()) as CoverageComparison;
+
+        const commentNestedWorkingDirectory = createComment({
+            coverageComparison,
+            workingDirectory: 'monorepo-apps/my-monorepo-app'
+        });
+
+        const commentWithRootWorkingDirectory = createComment({
+            coverageComparison,
+            workingDirectory: '/'
+        });
+
+        expect(commentNestedWorkingDirectory).toContain('## Test Coverage Ratchet: monorepo-apps/my-monorepo-app');
+        expect(commentWithRootWorkingDirectory).toContain('## Test Coverage Ratchet');
+        expect(commentWithRootWorkingDirectory).not.toContain('## Test Coverage Ratchet:');
+    });
 });

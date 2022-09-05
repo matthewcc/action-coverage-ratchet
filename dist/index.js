@@ -71,6 +71,12 @@ const differenceInMetric_1 = __importDefault(__nccwpck_require__(5059));
 const title = '## Test Coverage Ratchet';
 const detailsSummary = 'Show additional coverage details';
 const GITHUB_MESSAGE_SIZE_LIMIT = 65535;
+const getTitle = (workingDirectory) => {
+    if (['/', './'].includes(workingDirectory)) {
+        return title;
+    }
+    return `${title}: ${workingDirectory}`;
+};
 const getMetaComment = (workingDirectory) => (`<!-- jest coverage ratchet action for working directory: ${workingDirectory} -->`);
 exports.getMetaComment = getMetaComment;
 const composeComment = (texts) => texts.join('\n\n');
@@ -153,7 +159,7 @@ function createComment({ coverageComparison, workingDirectory, margin = 0, comme
     const expandedReport = createComparisons(testMetrics);
     const aboveTheFold = composeComment([
         metaTag,
-        title,
+        getTitle(workingDirectory),
         statusHeadline,
         totalsSummary
     ]);
@@ -370,35 +376,63 @@ const getPreviousComment_1 = __importDefault(__nccwpck_require__(4011));
 const compareCoverage_1 = __importDefault(__nccwpck_require__(6379));
 const createComment_1 = __importDefault(__nccwpck_require__(6206));
 function run() {
-    var _a;
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            if (!((_a = github_1.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.number)) {
+            if (github_1.context.eventName !== 'pull_request') {
+                core.setFailed('This action only works with pull requests.');
+                return;
+            }
+            if (!((_b = (_a = github_1.context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.number)) {
                 core.setFailed('No pull request found.');
                 return;
             }
             const currentBranch = process.env.GITHUB_HEAD_REF;
-            if (!currentBranch) {
-                core.setFailed('Error looking up current branch.');
+            if (!currentBranch || currentBranch === 'undefined') {
+                core.setFailed('Error looking up current pull request branch.');
                 return;
             }
-            const workingDirectory = core.getInput('working-directory');
-            const mainBranchName = core.getInput('default-branch');
-            const testScript = core.getInput('test-script');
+            const testScript = core.getInput('test_script');
+            if (!testScript || testScript === 'undefined') {
+                core.setFailed('No test_script provided.');
+                return;
+            }
+            const githubToken = core.getInput('github_token');
+            if (!githubToken || githubToken === 'undefined') {
+                core.setFailed('No github_token provided.');
+                return;
+            }
+            const workingDirectory = core.getInput('working_directory');
+            const coverageSummaryPath = core.getInput('coverage_summary_path');
+            const pathToSummary = `${workingDirectory}/${coverageSummaryPath}`;
             const margin = parseInt(core.getInput('margin'), 10);
-            const pathToSummary = `${workingDirectory}/coverage/coverage-summary.json`;
+            if (Number.isNaN(margin)) {
+                core.setFailed(`Margin must be a number. Received "${core.getInput('margin')}".`);
+                return;
+            }
+            if (margin < 0 || margin > 100) {
+                core.setFailed(`Margin must be between 0 and 100. Received ${margin}.`);
+                return;
+            }
+            const mainBranchName = core.getInput('default_branch');
             yield (0, switchBranch_1.default)(mainBranchName, true);
             yield (0, exec_1.exec)(testScript);
-            const currentCoverageReport = yield (0, getCoverageReport_1.default)(pathToSummary);
-            if (!currentCoverageReport) {
-                core.setFailed('Unable to get coverage report from default branch');
+            let currentCoverageReport;
+            try {
+                currentCoverageReport = yield (0, getCoverageReport_1.default)(pathToSummary);
+            }
+            catch (_c) {
+                core.setFailed(`Unable read file: ${pathToSummary}`);
                 return;
             }
             yield (0, switchBranch_1.default)(currentBranch);
             yield (0, exec_1.exec)(testScript);
-            const incomingCoverageReport = yield (0, getCoverageReport_1.default)(pathToSummary);
-            if (!incomingCoverageReport) {
-                core.setFailed('Unable to get coverage report from feature branch');
+            let incomingCoverageReport;
+            try {
+                incomingCoverageReport = yield (0, getCoverageReport_1.default)(pathToSummary);
+            }
+            catch (_d) {
+                core.setFailed(`Unable read file: ${pathToSummary}`);
                 return;
             }
             const coverageComparison = (0, compareCoverage_1.default)({
@@ -410,7 +444,6 @@ function run() {
                 workingDirectory,
                 margin
             });
-            const githubToken = core.getInput('github-token');
             const pullRequestNumber = github_1.context.payload.pull_request.number;
             const octokit = (0, github_1.getOctokit)(githubToken);
             const previousReport = yield (0, getPreviousComment_1.default)({
@@ -421,6 +454,12 @@ function run() {
             });
             if (coverageComparison.coverageHasDeclined) {
                 core.setFailed('Coverage has declined');
+            }
+            else if (coverageComparison.averageCoverageChange > 0) {
+                core.info('Coverage has increased');
+            }
+            else {
+                core.info('Coverage has not changed');
             }
             if (previousReport) {
                 core.info('Appending pre-existing comment');
@@ -433,11 +472,9 @@ function run() {
         }
         catch (err) {
             if (err instanceof Error) {
-                core.setFailed(err.message);
+                core.info(err.message);
             }
-            else {
-                core.setFailed('Coverage Ratchet action failed');
-            }
+            core.setFailed('Coverage Ratchet action failed');
         }
     });
 }
@@ -451,25 +488,6 @@ exports["default"] = run;
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -480,21 +498,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__nccwpck_require__(2186));
 const exec_1 = __nccwpck_require__(1514);
 const switchBranch = (branch, gitFetch = false) => __awaiter(void 0, void 0, void 0, function* () {
-    core.info(`switching to branch: ${branch}`);
     if (gitFetch) {
         try {
             yield (0, exec_1.exec)('git fetch --all --depth=1');
         }
         catch (err) {
+            let msg = 'Unable to fetch branches';
             if (err instanceof Error) {
-                core.setFailed(`Unable to fetch branches: ${err.message}`);
+                msg = `${msg}: ${err.message}`;
             }
-            else {
-                core.setFailed('Unable to fetch branches');
-            }
+            throw new Error(msg);
         }
     }
     yield (0, exec_1.exec)(`git checkout -f ${branch}`);
