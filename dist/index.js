@@ -505,14 +505,23 @@ const switchBranch = (branch, gitFetch = false) => __awaiter(void 0, void 0, voi
             yield (0, exec_1.exec)('git fetch --all --depth=1');
         }
         catch (err) {
-            let msg = 'Unable to fetch branches';
+            let msg = 'Error on "git fetch --all --depth=1"';
             if (err instanceof Error) {
                 msg = `${msg}: ${err.message}`;
             }
             throw new Error(msg);
         }
     }
-    yield (0, exec_1.exec)(`git checkout -f ${branch}`);
+    try {
+        yield (0, exec_1.exec)(`git checkout -f ${branch}`);
+    }
+    catch (err) {
+        let msg = `Error on "git checkout -f ${branch}"`;
+        if (err instanceof Error) {
+            msg = `${msg}: ${err.message}`;
+        }
+        throw new Error(msg);
+    }
 });
 exports["default"] = switchBranch;
 

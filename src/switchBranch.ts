@@ -6,7 +6,7 @@ const switchBranch = async (branch: string, gitFetch = false) => {
             await exec('git fetch --all --depth=1');
         }
         catch (err) {
-            let msg = 'Unable to fetch branches';
+            let msg = 'Error on "git fetch --all --depth=1"';
             if (err instanceof Error) {
                 msg = `${msg}: ${err.message}`;
             }
@@ -15,7 +15,17 @@ const switchBranch = async (branch: string, gitFetch = false) => {
         }
     }
 
-    await exec(`git checkout -f ${branch}`);
+    try {
+        await exec(`git checkout -f ${branch}`);
+    }
+    catch (err) {
+        let msg = `Error on "git checkout -f ${branch}"`;
+        if (err instanceof Error) {
+            msg = `${msg}: ${err.message}`;
+        }
+
+        throw new Error(msg);
+    }
 };
 
 export default switchBranch;
