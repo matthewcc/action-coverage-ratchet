@@ -23,9 +23,6 @@ inputs:
     description: 'Only report failure if decline is larger than this margin'
     required: false
     default: 0
-outputs:
-  declines:
-    description: 'declining coverage output'
 runs:
   using: 'node16'
   main: 'dist/index.js'

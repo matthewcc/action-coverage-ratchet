@@ -16,6 +16,6 @@ jobs:
           audit_level: high
           github_token: ${{ secrets.GITHUB_TOKEN }}
           issue_title: Security vulnerabilities found (all deps)
-          issue_assignees: c-tuck
+          issue_assignees: matthewcc
           issue_labels: vulnerability
           dedupe_issues: true
